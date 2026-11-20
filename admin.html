@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Blast Undangan - Edu Fair 2026</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      padding: 32px 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      padding: 28px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    h1 { color: #1e3a8a; margin-bottom: 6px; }
+    p.sub { color: #64748b; margin-bottom: 24px; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #f1f5f9;
+      padding: 18px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      align-items: center;
+    }
+    .controls div { flex: 1; min-width: 240px; }
+    label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; }
+    input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: white;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
+    th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    th { background: #1e3a8a; color: white; }
+    .btn-wa {
+      display: inline-block;
+      background: #16a34a;
+      color: white;
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .btn-wa:hover { background: #15803d; }
+    .btn-preview {
+      display: inline-block;
+      background: #e2e8f0;
+      color: #1e293b;
+      text-decoration: none;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Dashboard Blast Undangan Edu Fair 2026</h1>
+    <p class="sub">Unggah file <strong>data-tamu.csv</strong> untuk menghasilkan tautan undangan personal dan pesan WhatsApp otomatis.</p>
+
+    <div class="controls">
+      <div>
+        <label for="base-url">URL Dasar Halaman Undangan (index.html)</label>
+        <input type="text" id="base-url" value="">
+      </div>
+      <div>
+        <label for="csv-file">Pilih File CSV Tamu</label>
+        <input type="file" id="csv-file" accept=".csv">
+      </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama Tamu</th>
+            <th>Instansi</th>
+            <th>Kategori</th>
+            <th>No. WhatsApp</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="guest-table-body">
+          <tr>
+            <td colspan="6" style="text-align:center; color:#64748b;">Silakan pilih file <code>data-tamu.csv</code> terlebih dahulu...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Otomatis mendeteksi URL lokasi file index.html saat ini
+    const baseUrlInput = document.getElementById("base-url");
+    const currentPath = window.location.href.replace("admin.html", "index.html");
+    baseUrlInput.value = currentPath;
+
+    document.getElementById("csv-file").addEventListener("change", function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          renderTable(results.data);
+        }
+      });
+    });
+
+    function renderTable(data) {
+      const tbody = document.getElementById("guest-table-body");
+      tbody.innerHTML = "";
+      const baseUrl = baseUrlInput.value.trim();
+
+      data.forEach(row => {
+        if (!row.nama_tamu) return;
+
+        // Membuat parameter URL yang aman (URL-encoded)
+        const params = new URLSearchParams({
+          nama: row.nama_tamu.trim(),
+          to: row.instansi.trim(),
+          kategori: row.kategori.trim()
+        });
+
+        const personalLink = `${baseUrl}?${params.toString()}`;
+
+        // Format pesan WhatsApp
+        const message = `Yth. Bapak/Ibu *${row.nama_tamu.trim()}* (${row.instansi.trim()}),\n\n` +
+                        `Kami mengundang Bapak/Ibu sebagai perwakilan kategori *${row.kategori.trim()}* untuk berpartisipasi dalam acara *Edu Fair & Career Day 2026*.\n\n` +
+                        `Silakan buka tautan undangan digital & formulir konfirmasi kehadiran (RSVP) berikut:\n` +
+                        `${personalLink}\n\n` +
+                        `Atas perhatian dan kehadirannya, kami ucapkan terima kasih.`;
+
+        const waNumber = row.no_whatsapp.trim().replace(/[^0-9]/g, "");
+        const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.id}</td>
+          <td><strong>${row.nama_tamu}</strong></td>
+          <td>${row.instansi}</td>
+          <td>${row.kategori}</td>
+          <td>${waNumber}</td>
+          <td>
+            <a href="${personalLink}" target="_blank" class="btn-preview">Lihat Web</a>
+            <a href="${waLink}" target="_blank" class="btn-wa">Kirim Undangan WhatsApp</a>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
